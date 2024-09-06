@@ -14,6 +14,21 @@ python pip install -r requirements.txt
 ```
 ## Analysis
 
+This project includes several datasets related to gamma radiation, hygrometry, atmospheric pressure, temperature, and synthetic noise. Below is a explanation of each dataset:
+
+1. 2015_months_DebitDoseA.csv
+Contains primary data on gamma radiation levels, with measurements for each month of 2015.
+2. 2015_months_HYGR.csv
+Hygrometry (humidity) data for 2015, organized by month.
+3. 2015_months_PATM.csv
+Atmospheric pressure data for 2015, organized by month.
+4. 2015_months_TEMP.csv
+Temperature data for 2015, organized by month.
+5. shortMm_0909_1.csv
+Synthetic Gaussian white noise data.
+
+Note: The hygrometry, pressure, and temperature datasets are not used in the main algorithm but demonstrate other potential applications of the method.
+
 ## References
 
 - [1] K. Hundman, V. Constantinou, C. Laporte, I. Colwell, and T. Soderstrom, “Detecting Spacecraft Anomalies Using LSTMs and Nonparametric Dynamic Thresholding,” in Proc. of the 24th ACM SIGKDD, 2018. 
