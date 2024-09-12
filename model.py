@@ -33,14 +33,16 @@ def train_model (model ,X_train,Y_train,n_epoch):
     return model 
 
 
-# prepare the training data
+# ------------ PREPARE THE DATA FOR TRAINING AND TEST ----------------------------------
 
 df_train=pd.read_csv("Radiological-pollution-monitoring-anomaly-detection/Assets/Data/Normal_signals.csv")
 X=df_train['Normal 0'].to_numpy() # contains 3105 samples 
 
 df_test=pd.read_csv("Radiological-pollution-monitoring-anomaly-detection/Assets/Data/2015_months_DebitDoseA.csv")
 X_test=df_test['20/10/2015 09:18'].to_numpy()  #contains all data for the last monthn
- 
+
+#-------------- SCALE THE DATA BEETWEEN 0 AND 1 FOR TRAINING -----------------------------------------
+
 data=np.concatenate([X,X_test],axis=0)
 data= data.reshape(-1, 1)
 
@@ -50,7 +52,6 @@ scaled_data= scaler.fit_transform(data)
 X,X_test = scaled_data[0:3105],scaled_data[3105:] 
 
 def create_sequence(seq ,ls ):
-
     X=[]
     y=[]
     for i in range (len(seq) -ls):
@@ -61,21 +62,19 @@ def create_sequence(seq ,ls ):
 
 
 x,y =create_sequence(X , ls= 100)
-
 x_train ,x_val ,y_train ,y_val = train_test_split( x ,y ,test_size= 0.2 )
 
 x_test,y_test=create_sequence(X_test , ls= 100)
 
 
-# TRAIN AND SAVE THE MODEL 
+#-------------------  TRAIN AND SAVE THE MODEL  ----------------------------------------
 """model=create_model(80 ,80 )
 model.summary()
 
 model = train_model(model,x_train,y_train,50)
 model.save('LSTM.h5')"""
 
-model=tf.keras.models.load_model('LSTM.h5' ,compile=False
-)
+model=tf.keras.models.load_model('LSTM.h5' ,compile=False)
 model.compile(optimizer='adam', loss='mse')
 
 # threshold determination   : The first method consist of making the assumption that the errors are gaussian and calculate threshold 
@@ -96,9 +95,10 @@ class normal_threshold:
         errors=self.model.predict(X_test) - Y_test
 
         p = np.array([norm.pdf(x, self.mu , self.sigma)[0]  for x in errors])
-        prediction =np.array([ p< self.eps ])
+        prediction =np.array([ p< self.eps ])  
 
         return prediction , p , self.eps
+
 
 threshold = normal_threshold(x_val,y_val,model, thres= 0.95)
 prediction ,p, eps  =threshold.classify(x_test,y_test)
@@ -107,8 +107,6 @@ plt.plot (X_test[100:500])
 plt.xlabel('signal time')
 plt.ylabel('signal value')
  
-
-#prob=100*[0] + prediction
 plt.plot(p[0:400]/10)
 plt.axhline( eps /10)
 plt.xlabel('signal time')
@@ -116,9 +114,9 @@ plt.ylabel('signal proba')
 plt.show()
 
 
-# second thresholding method 
 
 
+# second thresholding method  :need to explore more the github 
 
 def dynamic_tresholding ( eh , x_test, y_test , model ):
 
