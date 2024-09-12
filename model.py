@@ -68,14 +68,14 @@ x_test,y_test=create_sequence(X_test , ls= 100)
 
 
 #-------------------  TRAIN AND SAVE THE MODEL  ----------------------------------------
-"""model=create_model(80 ,80 )
+model=create_model(120 ,100 )
 model.summary()
 
 model = train_model(model,x_train,y_train,50)
-model.save('LSTM.h5')"""
+#model.save('LSTM.h5')
 
-model=tf.keras.models.load_model('LSTM.h5' ,compile=False)
-model.compile(optimizer='adam', loss='mse')
+#model=tf.keras.models.load_model('LSTM.h5' ,compile=False)
+#model.compile(optimizer='adam', loss='mse')
 
 # threshold determination   : The first method consist of making the assumption that the errors are gaussian and calculate threshold 
 
@@ -94,21 +94,24 @@ class normal_threshold:
 
         errors=self.model.predict(X_test) - Y_test
 
-        p = np.array([norm.pdf(x, self.mu , self.sigma)[0]  for x in errors])
+        p = [norm.pdf(x, self.mu , self.sigma)[0]  for x in errors]
+       
+        proba = np.array([self.eps - pr if pr < self.eps else 0 for pr in p ])
         prediction =np.array([ p< self.eps ])  
 
-        return prediction , p , self.eps
+        return prediction , proba , self.eps
 
 
-threshold = normal_threshold(x_val,y_val,model, thres= 0.95)
+
+threshold = normal_threshold(x_val,y_val,model, thres= 0.999)
 prediction ,p, eps  =threshold.classify(x_test,y_test)
 
-plt.plot (X_test[100:500])
+plt.plot (X_test[10100:15100])
 plt.xlabel('signal time')
 plt.ylabel('signal value')
  
-plt.plot(p[0:400]/10)
-plt.axhline( eps /10)
+plt.plot(p[10000 :15000])
+#plt.axhline( eps /10)
 plt.xlabel('signal time')
 plt.ylabel('signal proba')
 plt.show()
