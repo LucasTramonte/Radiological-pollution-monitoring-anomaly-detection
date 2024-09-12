@@ -6,7 +6,9 @@ from tensorflow.keras.layers import LSTM ,Dropout , Dense
 import pandas as pd 
 import numpy as np 
 from scipy.stats import norm
-#from sklearn.preprocessing import MinMaxScaler
+from sklearn.preprocessing import MinMaxScaler
+import matplotlib.pyplot as plt 
+from sklearn.model_selection import train_test_split
 
 os.environ['TF_ENABLE_ONEDNN_OPTS'] = '0'
 
@@ -30,60 +32,93 @@ def train_model (model ,X_train,Y_train,n_epoch):
 
     return model 
 
+
 # prepare the training data
 
-def create_sequence(seq ,ls ,nseq):
+df_train=pd.read_csv("Radiological-pollution-monitoring-anomaly-detection/Assets/Data/Normal_signals.csv")
+X=df_train['Normal 0'].to_numpy() # contains 3105 samples 
+
+df_test=pd.read_csv("Radiological-pollution-monitoring-anomaly-detection/Assets/Data/2015_months_DebitDoseA.csv")
+X_test=df_test['20/10/2015 09:18'].to_numpy()  #contains all data for the last monthn
+ 
+data=np.concatenate([X,X_test],axis=0)
+data= data.reshape(-1, 1)
+
+scaler=MinMaxScaler((0,1))
+scaled_data= scaler.fit_transform(data)
+
+X,X_test = scaled_data[0:3105],scaled_data[3105:] 
+
+def create_sequence(seq ,ls ):
 
     X=[]
     y=[]
-
-    for i in range (nseq):
+    for i in range (len(seq) -ls):
         X.append(seq[i:i+ls])
         y.append(seq[i+ls])
 
     return np.array(X) ,np.array(y)
 
-df=pd.read_csv("Radiological-pollution-monitoring-anomaly-detection/Assets/Data/2015_months_DebitDoseA.csv")
 
-df_train=df.iloc[0:2501]['24/02/2015 11:20']
-X_train = df_train.to_numpy()
+x,y =create_sequence(X , ls= 100)
+
+x_train ,x_val ,y_train ,y_val = train_test_split( x ,y ,test_size= 0.2 )
+
+x_test,y_test=create_sequence(X_test , ls= 100)
 
 
-X ,Y = create_sequence(X_train,100,2400)
- 
+# TRAIN AND SAVE THE MODEL 
+"""model=create_model(80 ,80 )
+model.summary()
+
+model = train_model(model,x_train,y_train,50)
+model.save('LSTM.h5')"""
+
+model=tf.keras.models.load_model('LSTM.h5' ,compile=False
+)
+model.compile(optimizer='adam', loss='mse')
+
 # threshold determination   : The first method consist of making the assumption that the errors are gaussian and calculate threshold 
 
+class normal_threshold:
 
-def classify( x_test ,model ,thres, x_val , y_val):
+    def __init__(self , X_val ,Y_val ,model ,thres =0.9) :
 
-    errors = np.abs(model.predict(x_val)-y_val)
+        self.model=model
+        self.errors=model.predict(X_val)-Y_val
+        self.mu =np.mean(self.errors)
+        self.sigma =np.std(self.errors)
+        self.eps = norm.pdf(norm.ppf(thres, loc=self.mu, scale=self.sigma) ,  self.mu  ,  self.sigma)
+    
 
-    mu=np.mean(errors)
-    sigma= np.std(errors)
+    def classify( self , X_test ,Y_test ):
 
-    p = [norm.pdf(x, mu , sigma) for x in x_test]
+        errors=self.model.predict(X_test) - Y_test
 
-    prediction =np.array([ 1 if p> thres else 0 ])
+        p = np.array([norm.pdf(x, self.mu , self.sigma)[0]  for x in errors])
+        prediction =np.array([ p< self.eps ])
 
-    return prediction
+        return prediction , p , self.eps
+
+threshold = normal_threshold(x_val,y_val,model, thres= 0.95)
+prediction ,p, eps  =threshold.classify(x_test,y_test)
+
+plt.plot (X_test[100:500])
+plt.xlabel('signal time')
+plt.ylabel('signal value')
+ 
+
+#prob=100*[0] + prediction
+plt.plot(p[0:400]/10)
+plt.axhline( eps /10)
+plt.xlabel('signal time')
+plt.ylabel('signal proba')
+plt.show()
 
 
 # second thresholding method 
-def continuous_seq( thres , es ):
 
-    ind_a =[ i for i in range(0,len(es)) if es[i]> thres  ]
-    ls=[]
-    l=[]
-    for i in range (0 ,len(ind_a)-1):
 
-        if  ind_a[i]+1==ind_a[i+1]:
-            
-            ind_a[i+1]=ind_a[i+1]-1
-
-    return ind_a
-
-l= [1,2,3,0.1, 4.5,7,6,9,3,1,1.1]
-print(continuous_seq(2 ,l))
 
 def dynamic_tresholding ( eh , x_test, y_test , model ):
 
